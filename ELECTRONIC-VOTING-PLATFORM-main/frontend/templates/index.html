@@ -1,0 +1,247 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#10213b">
+    <title>VoteSecure | Electronic Voting Platform</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/" aria-label="VoteSecure home">
+            <span class="brand-icon">✓</span>
+            <span>VoteSecure<small>Electronic Voting Platform</small></span>
+        </a>
+        <div class="secure-label">
+            <span class="status-dot"></span>
+            Secure voting prototype
+        </div>
+    </header>
+
+    <main class="page">
+        <section class="hero">
+            <div class="hero-copy">
+                <span class="eyebrow">YOUR VOICE MATTERS</span>
+                <h1>Make your choice.<br><span>Make it count.</span></h1>
+                <p>
+                    Follow three simple steps to request your voting credential,
+                    select your candidate and submit your ballot.
+                </p>
+                <div class="hero-note">
+                    <span>🔒</span>
+                    <span>Your ballot is encrypted before it is stored by the backend.</span>
+                </div>
+            </div>
+            <div class="hero-art" aria-hidden="true">
+                <div class="art-circle">
+                    <div class="ballot-paper">
+                        <span class="paper-check">✓</span>
+                        <span class="paper-line"></span>
+                        <span class="paper-line short"></span>
+                        <span class="paper-line"></span>
+                        <span class="paper-line short"></span>
+                    </div>
+                    <div class="floating-check">✓</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="progress-section" aria-label="Voting progress">
+            <div class="progress-heading">
+                <div>
+                    <h2>Your voting journey</h2>
+                    <p>Complete each step in order.</p>
+                </div>
+                <span id="progress-count" class="progress-count">Step 1 of 3</span>
+            </div>
+
+            <div class="steps">
+                <div class="step active" id="step-indicator-1">
+                    <span class="step-number">1</span>
+                    <span><strong>Verify</strong><small>Request credential</small></span>
+                </div>
+                <div class="step-connector"></div>
+                <div class="step" id="step-indicator-2">
+                    <span class="step-number">2</span>
+                    <span><strong>Choose</strong><small>Select candidate</small></span>
+                </div>
+                <div class="step-connector"></div>
+                <div class="step" id="step-indicator-3">
+                    <span class="step-number">3</span>
+                    <span><strong>Submit</strong><small>Cast your ballot</small></span>
+                </div>
+            </div>
+        </section>
+
+        <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+
+        <section class="panel" id="credential-panel">
+            <div class="panel-heading">
+                <div class="section-icon blue-icon">01</div>
+                <div>
+                    <span class="section-kicker">STEP ONE</span>
+                    <h2>Get your voting credential</h2>
+                    <p>Enter your voter reference to request a credential.</p>
+                </div>
+            </div>
+
+            <form id="credential-form">
+                <label for="voter-reference">Voter reference</label>
+                <input
+                    id="voter-reference"
+                    name="voter_reference"
+                    type="text"
+                    placeholder="e.g. voter-001"
+                    autocomplete="off"
+                    required
+                    maxlength="100"
+                >
+                <p class="field-help">
+                    Use a voter reference already registered in your prototype database.
+                </p>
+                <button class="button primary" id="credential-button" type="submit">
+                    Request credential <span aria-hidden="true">→</span>
+                </button>
+            </form>
+
+            <div id="credential-result" class="credential-result" hidden>
+                <div class="result-heading">
+                    <span class="success-icon">✓</span>
+                    <div>
+                        <strong>Credential received</strong>
+                        <p>Keep this token private. You will need it to submit your ballot.</p>
+                    </div>
+                </div>
+                <label for="credential-value">Your credential</label>
+                <div class="credential-box">
+                    <input id="credential-value" type="password" readonly>
+                    <button class="icon-button" id="toggle-credential" type="button"
+                        aria-label="Show credential">Show</button>
+                    <button class="icon-button" id="copy-credential" type="button"
+                        aria-label="Copy credential">Copy</button>
+                </div>
+                <p class="field-help">
+                    The backend stores the credential hash rather than the original token.
+                </p>
+                <button class="button primary" id="continue-button" type="button">
+                    Continue to ballot <span aria-hidden="true">→</span>
+                </button>
+            </div>
+        </section>
+
+        <section class="panel locked-panel" id="ballot-panel" aria-labelledby="ballot-title">
+            <div class="panel-heading">
+                <div class="section-icon purple-icon">02</div>
+                <div>
+                    <span class="section-kicker">STEP TWO</span>
+                    <h2 id="ballot-title">Choose your candidate</h2>
+                    <p>Select one candidate and review your choice before submission.</p>
+                </div>
+                <span class="lock-label" id="ballot-lock">🔒 Locked</span>
+            </div>
+
+            <div class="candidate-grid">
+                <label class="candidate-card">
+                    <input type="radio" name="candidate" value="candidate-A" disabled>
+                    <span class="candidate-avatar avatar-blue">A</span>
+                    <span class="candidate-info">
+                        <strong>Candidate A</strong>
+                        <small>Candidate option A</small>
+                    </span>
+                    <span class="radio-mark"></span>
+                </label>
+
+                <label class="candidate-card">
+                    <input type="radio" name="candidate" value="candidate-B" disabled>
+                    <span class="candidate-avatar avatar-purple">B</span>
+                    <span class="candidate-info">
+                        <strong>Candidate B</strong>
+                        <small>Candidate option B</small>
+                    </span>
+                    <span class="radio-mark"></span>
+                </label>
+
+                <label class="candidate-card">
+                    <input type="radio" name="candidate" value="candidate-C" disabled>
+                    <span class="candidate-avatar avatar-green">C</span>
+                    <span class="candidate-info">
+                        <strong>Candidate C</strong>
+                        <small>Candidate option C</small>
+                    </span>
+                    <span class="radio-mark"></span>
+                </label>
+            </div>
+
+            <div class="review-box">
+                <span class="review-icon">i</span>
+                <p id="selection-summary">
+                    Your selection will appear here once you choose a candidate.
+                </p>
+            </div>
+
+            <button class="button primary" id="review-button" type="button" disabled>
+                Review my vote <span aria-hidden="true">→</span>
+            </button>
+        </section>
+
+        <section class="panel confirmation-panel" id="confirmation-panel" hidden>
+            <div class="panel-heading">
+                <div class="section-icon green-icon">03</div>
+                <div>
+                    <span class="section-kicker">STEP THREE</span>
+                    <h2>Review and submit</h2>
+                    <p>Check your selection before sending your ballot.</p>
+                </div>
+            </div>
+
+            <div class="final-review">
+                <span class="review-icon">✓</span>
+                <div>
+                    <small>YOUR SELECTED CANDIDATE</small>
+                    <h3 id="final-candidate">No candidate selected</h3>
+                    <p>Your ballot will be encrypted before it is stored.</p>
+                </div>
+            </div>
+
+            <div class="button-row">
+                <button class="button secondary" id="back-button" type="button">
+                    ← Change choice
+                </button>
+                <button class="button primary" id="submit-button" type="button">
+                    Confirm and submit
+                </button>
+            </div>
+
+            <p class="disclaimer">
+                Submitting a ballot consumes your credential. Do not submit until you
+                are satisfied with your selection.
+            </p>
+        </section>
+
+        <section class="panel completion-panel" id="completion-panel" hidden>
+            <div class="completion-icon">✓</div>
+            <span class="section-kicker">SUBMISSION COMPLETE</span>
+            <h2>Your ballot was accepted</h2>
+            <p id="completion-message">
+                The server confirmed that your ballot was stored.
+            </p>
+            <div class="completion-details">
+                <div><span>Ballot status</span><strong>Accepted by API</strong></div>
+                <div><span>Credential</span><strong>Consumed</strong></div>
+                <div><span>Storage</span><strong>Encrypted vote</strong></div>
+            </div>
+            <p class="field-help">
+                This confirms API acceptance, not election tallying or certification.
+            </p>
+        </section>
+
+        <footer class="footer">
+            <p>VoteSecure · Secure Software Systems Project</p>
+            <p>Educational prototype · Not for real elections</p>
+        </footer>
+    </main>
+</body>
+</html>
