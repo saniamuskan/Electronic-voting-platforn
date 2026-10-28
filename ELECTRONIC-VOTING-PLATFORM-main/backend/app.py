@@ -1,6 +1,7 @@
 
 import os
 import secrets
+from datetime import timedelta
 from cryptography.fernet import Fernet
 from flask import Flask, jsonify
 
@@ -60,6 +61,8 @@ def create_app(test_config=None):
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SECRET_KEY=os.environ.get("APP_SECRET_KEY") or secrets.token_hex(32),
         SESSION_COOKIE_HTTPONLY=True,
+        PERMANENT_SESSION_LIFETIME=timedelta(minutes=15),
+        SESSION_REFRESH_EACH_REQUEST=False,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.environ.get("APP_USE_HTTPS") == "1",
         DEMO_VOTER_PASSWORD=os.environ.get("DEMO_VOTER_PASSWORD", ""),

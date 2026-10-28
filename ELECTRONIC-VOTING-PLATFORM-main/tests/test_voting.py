@@ -173,3 +173,53 @@ def test_invalid_vote_does_not_consume_credential(client, vote):
     assert bad.status_code == 400
     good = client.post("/api/ballots", json={"credential": credential, "vote": {"candidate": "candidate-A"}})
     assert good.status_code == 201
+
+
+def test_session_lifetime_configured(client):
+    from datetime import timedelta
+
+    assert client.application.config["PERMANENT_SESSION_LIFETIME"] == timedelta(minutes=15)
+    assert client.application.config["SESSION_REFRESH_EACH_REQUEST"] is False
+
+    login = client.post("/api/auth/login", json={
+        "voter_reference": "voter-1",
+        "password": "test-voter-password",
+    })
+    assert login.status_code == 200
+
+    with client.session_transaction() as sess:
+        assert sess.permanent is True
+        assert sess.get("voter_id") is not None
+
+
+def test_logout_requires_csrf(client):
+    login = client.post("/api/auth/login", json={
+        "voter_reference": "voter-1",
+        "password": "test-voter-password",
+    })
+    assert login.status_code == 200
+
+    logout = client.post("/api/auth/logout")
+    assert logout.status_code == 403
+
+
+def test_valid_logout_clears_session(client):
+    login = client.post("/api/auth/login", json={
+        "voter_reference": "voter-1",
+        "password": "test-voter-password",
+    })
+    assert login.status_code == 200
+
+    token = login.json["csrf_token"]
+    logout = client.post(
+        "/api/auth/logout",
+        headers={"X-CSRF-Token": token},
+    )
+    assert logout.status_code == 200
+
+    rejected = client.post(
+        "/api/credentials/issue",
+        json={},
+        headers={"X-CSRF-Token": token},
+    )
+    assert rejected.status_code == 401

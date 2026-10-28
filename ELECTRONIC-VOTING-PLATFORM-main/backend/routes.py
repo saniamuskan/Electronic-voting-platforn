@@ -39,6 +39,7 @@ def demo_login():
     if voter is None or not voter.is_eligible:
         return jsonify(error="Invalid demo credentials"), 401
     session.clear()
+    session.permanent = True
     session["voter_id"] = voter.id
     session["csrf_token"] = secrets.token_urlsafe(32)
     return jsonify(message="Demo voter verified", csrf_token=session["csrf_token"]), 200
@@ -46,6 +47,11 @@ def demo_login():
 
 @voting_bp.post("/auth/logout")
 def logout():
+    csrf = session.get("csrf_token")
+    if not csrf or not isinstance(session.get("voter_id"), int):
+        return jsonify(error="Login required"), 401
+    if not secrets.compare_digest(request.headers.get("X-CSRF-Token", ""), csrf):
+        return jsonify(error="Invalid CSRF token"), 403
     session.clear()
     return jsonify(message="Logged out"), 200
 
