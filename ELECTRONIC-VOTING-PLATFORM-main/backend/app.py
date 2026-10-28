@@ -1,5 +1,6 @@
 
 import os
+import secrets
 from cryptography.fernet import Fernet
 from flask import Flask, jsonify
 
@@ -57,6 +58,11 @@ def create_app(test_config=None):
             "sqlite:///" + database_path.replace(os.sep, "/")
         ),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        SECRET_KEY=os.environ.get("APP_SECRET_KEY") or secrets.token_hex(32),
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=os.environ.get("APP_USE_HTTPS") == "1",
+        DEMO_VOTER_PASSWORD=os.environ.get("DEMO_VOTER_PASSWORD", ""),
     )
     configured_key = os.environ.get("VOTING_ENCRYPTION_KEY")
     if test_config and "VOTING_ENCRYPTION_KEY" in test_config:
@@ -100,4 +106,4 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)

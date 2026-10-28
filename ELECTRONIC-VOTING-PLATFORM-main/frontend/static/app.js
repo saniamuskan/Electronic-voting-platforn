@@ -17,6 +17,7 @@ const notice = document.getElementById("notice");
 const progressCount = document.getElementById("progress-count");
 const selectionSummary = document.getElementById("selection-summary");
 
+let csrfToken = null;
 let votingCredential = null;
 let selectedCandidate = null;
 let submissionComplete = false;
@@ -83,14 +84,24 @@ credentialForm.addEventListener("submit", async (event) => {
     credentialButton.textContent = "Requesting credential...";
 
     try {
+        const login = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                voter_reference: voterReference,
+                password: document.getElementById("demo-password").value
+            })
+        });
+        const loginData = await readResponse(login);
+        csrfToken = loginData.csrf_token;
+
         const response = await fetch("/api/credentials/issue", {
             method: "POST",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "X-CSRF-Token": csrfToken
             },
-            body: JSON.stringify({
-                voter_reference: voterReference
-            })
+            body: JSON.stringify({})
         });
 
         const data = await readResponse(response);

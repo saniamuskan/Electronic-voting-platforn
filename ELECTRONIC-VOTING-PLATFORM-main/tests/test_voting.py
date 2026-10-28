@@ -15,6 +15,8 @@ def client(tmp_path):
         ),
         "SQLALCHEMY_TRACK_MODIFICATIONS": False,
         "VOTING_ENCRYPTION_KEY": Fernet.generate_key(),
+        "SECRET_KEY": "unit-test-secret-key",
+        "DEMO_VOTER_PASSWORD": "test-voter-password",
     })
 
     with app.app_context():
@@ -44,6 +46,18 @@ def client(tmp_path):
         db.engine.dispose()
 
 
+def issue_as_voter(client, voter_reference):
+    login = client.post("/api/auth/login", json={
+        "voter_reference": voter_reference,
+        "password": "test-voter-password",
+    })
+    if login.status_code != 200:
+        return login
+    return client.post("/api/credentials/issue", json={}, headers={
+        "X-CSRF-Token": login.json["csrf_token"]
+    })
+
+
 def test_health_check(client):
     response = client.get("/api/health")
     assert response.status_code == 200
@@ -51,39 +65,28 @@ def test_health_check(client):
 
 
 def test_issue_credential(client):
-    response = client.post(
-        "/api/credentials/issue",
-        json={"voter_reference": "voter-1"},
-    )
+    response = issue_as_voter(client, "voter-1")
 
     assert response.status_code == 201
     assert response.json["credential"]
 
 
 def test_ineligible_voter_cannot_get_credential(client):
-    response = client.post(
-        "/api/credentials/issue",
-        json={"voter_reference": "voter-2"},
-    )
+    response = issue_as_voter(client, "voter-2")
 
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_credential_cannot_be_issued_twice(client):
-    payload = {"voter_reference": "voter-1"}
-
-    first = client.post("/api/credentials/issue", json=payload)
-    second = client.post("/api/credentials/issue", json=payload)
+    first = issue_as_voter(client, "voter-1")
+    second = issue_as_voter(client, "voter-1")
 
     assert first.status_code == 201
     assert second.status_code == 409
 
 
 def test_vote_is_accepted_and_encrypted(client):
-    issued = client.post(
-        "/api/credentials/issue",
-        json={"voter_reference": "voter-1"},
-    )
+    issued = issue_as_voter(client, "voter-1")
     credential = issued.json["credential"]
 
     response = client.post(
@@ -96,27 +99,16 @@ def test_vote_is_accepted_and_encrypted(client):
 
     assert response.status_code == 201
 
-    # The test-only endpoint verifies that the ciphertext
-    # can be decrypted using the configured test key.
+    # Verify encryption inside the test only. No decrypt API is exposed.
     with client.application.app_context():
         ballot = db.session.query(Ballot).one()
         assert ballot.encrypted_vote != b'{"candidate":"candidate-A"}'
-        ballot_id = ballot.id
-
-    decrypted = client.post(
-        "/api/ballots/decrypt",
-        json={"ballot_id": ballot_id},
-    )
-
-    assert decrypted.status_code == 200
-    assert decrypted.json["vote"] == {"candidate": "candidate-A"}
+        plaintext = Fernet(client.application.config["VOTING_ENCRYPTION_KEY"]).decrypt(ballot.encrypted_vote)
+        assert plaintext == b'{"candidate":"candidate-A"}'
 
 
 def test_credential_cannot_be_reused(client):
-    issued = client.post(
-        "/api/credentials/issue",
-        json={"voter_reference": "voter-1"},
-    )
+    issued = issue_as_voter(client, "voter-1")
     credential = issued.json["credential"]
 
     payload = {
@@ -150,3 +142,34 @@ def test_missing_vote_is_rejected(client):
     )
 
     assert response.status_code == 400
+
+
+def test_anonymous_issuance_blocked(client):
+    response = client.post("/api/credentials/issue", json={"voter_reference": "voter-1"})
+    assert response.status_code == 401
+
+
+def test_wrong_demo_password_blocked(client):
+    response = client.post("/api/auth/login", json={"voter_reference": "voter-1", "password": "wrong"})
+    assert response.status_code == 401
+
+
+def test_issuance_csrf_required(client):
+    response = client.post("/api/auth/login", json={"voter_reference": "voter-1", "password": "test-voter-password"})
+    assert response.status_code == 200
+    assert client.post("/api/credentials/issue", json={}).status_code == 403
+
+
+@pytest.mark.parametrize("vote", [
+    {"candidate": "candidate-Z"},
+    {"candidate": 123},
+    {"candidate": "candidate-A", "extra": "bad"},
+    {"preferences": [1, 2, 3]},
+    {},
+])
+def test_invalid_vote_does_not_consume_credential(client, vote):
+    credential = issue_as_voter(client, "voter-1").json["credential"]
+    bad = client.post("/api/ballots", json={"credential": credential, "vote": vote})
+    assert bad.status_code == 400
+    good = client.post("/api/ballots", json={"credential": credential, "vote": {"candidate": "candidate-A"}})
+    assert good.status_code == 201
